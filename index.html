@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="de" style="color-scheme: dark;">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sandro's Kickbase Draft Board</title>
+<style>
+  :root{
+    --bg:#0a0d14;
+    --bg-glow: radial-gradient(1200px 600px at 15% -10%, rgba(124,92,255,.18), transparent 60%),
+               radial-gradient(1000px 500px at 100% 0%, rgba(34,211,238,.12), transparent 55%);
+    --panel:#12161f;
+    --panel2:#161b26;
+    --border: rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.16);
+    --text:#e7e9f0;
+    --muted:#8890a3;
+    --accent:#8b6bff;
+    --accent2:#22d3ee;
+    --red:#ef4444;
+    --red-bg: rgba(239,68,68,.20);
+    --green:#22c55e;
+    --green-bg: rgba(34,197,94,.20);
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:var(--bg);
+    background-image:var(--bg-glow);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;
+  }
+  body{padding:32px 24px 60px;}
+  .wrap{max-width:1020px;margin:0 auto;}
+
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:6px;flex-wrap:wrap;gap:12px;
+  }
+  h1{
+    font-size:22px;font-weight:700;letter-spacing:.2px;margin:0;
+    background:linear-gradient(90deg,var(--text),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .btns{display:flex;gap:10px;align-items:center;}
+  button{
+    font-family:inherit;font-size:13.5px;font-weight:600;
+    border-radius:10px;border:1px solid var(--border-strong);
+    background:var(--panel2);color:var(--text);
+    padding:9px 16px;cursor:pointer;transition:.15s ease;
+  }
+  button:hover{border-color:var(--accent);transform:translateY(-1px);}
+  #draftBtn{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    border:none;color:#0a0d14;
+  }
+  #draftBtn.active{
+    background:linear-gradient(135deg,var(--red),#f97316);
+  }
+  .hint{color:var(--muted);font-size:12.5px;margin:2px 0 20px;min-height:16px;}
+
+  .board{display:flex;gap:18px;align-items:flex-start;}
+
+  .team-panel{
+    display:none;flex-direction:column;
+    width:230px;flex-shrink:0;
+    background:var(--panel);border:1px solid var(--border);
+    border-radius:14px;padding:14px;
+    position:sticky;top:20px;
+  }
+  .team-panel h3{
+    margin:0 0 10px;font-size:13px;text-transform:uppercase;
+    letter-spacing:.08em;color:var(--muted);font-weight:700;
+  }
+  #teamList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;min-height:20px;}
+  #teamList li{
+    font-size:13.5px;background:var(--green-bg);border:1px solid rgba(34,197,94,.35);
+    border-radius:8px;padding:7px 10px;display:flex;justify-content:space-between;gap:8px;
+  }
+  #teamList li span.mw{color:var(--muted);font-size:12px;white-space:nowrap;}
+  .team-empty{color:var(--muted);font-size:12.5px;font-style:italic;padding:4px 2px;}
+  .team-total{
+    margin-top:12px;padding-top:12px;border-top:1px solid var(--border);
+    display:flex;justify-content:space-between;align-items:baseline;
+  }
+  .team-total .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+  .team-total .value{font-size:18px;font-weight:700;color:var(--green);}
+
+  .rows-panel{flex:1;min-width:0;}
+
+  .grid-cols{
+    grid-template-columns:28px 20px 1.7fr 1.1fr 1fr 1.45fr 20px;
+  }
+
+  .col-header{
+    display:grid;
+    gap:0;padding:0 4px 8px;
+  }
+  .col-header span{
+    font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--muted);font-weight:700;padding-left:12px;
+  }
+  .col-header span:first-child,
+  .col-header span:nth-child(2),
+  .col-header span:last-child{padding-left:0;text-align:center;}
+
+  #rows{display:flex;flex-direction:column;gap:8px;}
+
+  .row{
+    display:grid;
+    align-items:center;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:4px 4px;
+    transition:background .15s ease,border-color .15s ease,transform .1s ease;
+  }
+  .row:hover{border-color:var(--border-strong);}
+  .row.dragging{
+    opacity:.92;
+    outline:2px solid var(--accent2);
+    outline-offset:-1px;
+    box-shadow:0 8px 24px rgba(0,0,0,.45), 0 0 0 4px rgba(34,211,238,.15);
+    position:relative;
+    z-index:5;
+  }
+
+  .rank{
+    text-align:center;color:var(--muted);font-size:12.5px;font-weight:700;user-select:none;
+  }
+  .handle{
+    color:var(--muted);cursor:grab;font-size:14px;
+    user-select:none;-webkit-user-select:none;-moz-user-select:none;
+    -webkit-touch-callout:none;
+    touch-action:none;
+    display:flex;align-items:center;justify-content:center;
+    width:100%;height:100%;
+    align-self:stretch;
+    box-sizing:border-box;
+  }
+  .row input, .row select{
+    width:100%;background:transparent;border:none;outline:none;
+    color:var(--text);font-size:14px;padding:9px 12px;font-family:inherit;
+    border-left:1px solid var(--border);
+    appearance:none;-webkit-appearance:none;
+  }
+  .row input.f-spieler{
+    touch-action:none;
+  }
+  .row select{cursor:pointer;border-radius:6px;}
+  .row select option{background:#161b26;color:var(--text);}
+  .row select.f-verein{border-left-width:4px;transition:background .2s ease,border-left-color .2s ease;}
+  .row input:first-of-type{border-left:none;}
+  .row input::placeholder{color:#565d70;}
+
+  .del{
+    background:transparent;border:none;color:var(--muted);cursor:pointer;
+    font-size:15px;padding:2px;opacity:0;transition:.15s;line-height:1;
+  }
+  .row:hover .del{opacity:1;}
+  .del:hover{color:var(--red);}
+
+  /* Draft mode states */
+  .row.state-red{background:var(--red-bg);border-color:rgba(239,68,68,.45);}
+  .row.state-green{background:var(--green-bg);border-color:rgba(34,197,94,.45);}
+
+  body.draft-mode .row{cursor:pointer;}
+  body.draft-mode .row input,
+  body.draft-mode .row select{pointer-events:none;}
+  body.draft-mode .handle{visibility:hidden;}
+  body.draft-mode .del{visibility:hidden;}
+  body.draft-mode .team-panel{display:flex;}
+
+  .footer-note{
+    margin-top:26px;text-align:right;
+  }
+  .footer-note a{color:var(--muted);font-size:11.5px;cursor:pointer;text-decoration:underline;}
+  .footer-note a:hover{color:var(--red);}
+
+  /* Export modal */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;z-index:100;
+    background:rgba(4,6,10,.65);backdrop-filter:blur(2px);
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal{
+    width:100%;max-width:380px;background:var(--panel);
+    border:1px solid var(--border-strong);border-radius:16px;
+    padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .modal h3{margin:0 0 16px;font-size:16px;color:var(--text);}
+  .modal-label{
+    display:flex;flex-direction:column;gap:6px;
+    font-size:12.5px;color:var(--muted);margin-bottom:14px;
+  }
+  .modal-label input{
+    font-family:inherit;font-size:15px;color:var(--text);
+    background:var(--panel2);border:1px solid var(--border);
+    border-radius:8px;padding:9px 10px;outline:none;
+  }
+  .modal-label input:focus{border-color:var(--accent2);}
+  .modal-preview-wrap{margin-bottom:14px;}
+  #exportPreview{
+    width:100%;resize:vertical;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:12.5px;line-height:1.5;color:var(--text);
+    background:var(--panel2);border:1px solid var(--border);
+    border-radius:8px;padding:10px;outline:none;
+  }
+  .modal-actions{display:flex;gap:10px;flex-wrap:wrap;}
+  .modal-actions button{flex:1;}
+  .modal-actions .primary{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    border:none;color:#0a0d14;
+  }
+  .modal-status{
+    margin-top:10px;font-size:12.5px;color:var(--green);
+    min-height:16px;
+  }
+
+  /* Mini-game */
+  .minigame{
+    margin-top:24px;background:var(--panel);border:1px solid var(--border);
+    border-radius:14px;padding:14px 16px;
+  }
+  .minigame-header{
+    display:flex;justify-content:flex-end;margin-bottom:8px;
+  }
+  .goal-counter{
+    font-size:12.5px;font-weight:700;color:var(--accent2);
+    background:var(--panel2);padding:5px 12px;border-radius:8px;
+    border:1px solid var(--border-strong);white-space:nowrap;
+  }
+  .pitch-wrap{display:flex;}
+  .pitch{
+    position:relative;width:100%;height:130px;
+    background:repeating-linear-gradient(90deg,#1c7a34 0,#1c7a34 34px,#1a6e2d 34px,#1a6e2d 68px);
+    border:3px solid rgba(255,255,255,.9);border-radius:8px;overflow:hidden;
+    touch-action:none;cursor:crosshair;
+  }
+  .goal-frame{
+    position:absolute;top:8%;right:0;width:14px;height:84%;
+    border:3px solid #fff;border-right:none;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.3) 0 4px, transparent 4px 9px);
+  }
+  .wall{
+    position:absolute;top:0;
+    background:repeating-linear-gradient(45deg,#d1d5db,#d1d5db 6px,#9ca3af 6px,#9ca3af 12px);
+    border:2px solid #6b7280;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,.5);
+  }
+  .ball{
+    position:absolute;width:18px;height:18px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #fff, #d6d6d6 60%, #8f8f8f 100%);
+    box-shadow:0 2px 4px rgba(0,0,0,.5);
+  }
+  .mg-feedback{
+    position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);
+    font-size:22px;font-weight:800;opacity:0;pointer-events:none;
+    text-shadow:0 2px 8px rgba(0,0,0,.7);letter-spacing:.03em;
+  }
+  .mg-feedback.show-goal{color:#22c55e;animation:mgPopGoal .85s ease forwards;}
+  .mg-feedback.show-boo{color:#ef4444;animation:mgPopBoo .85s ease forwards;}
+  @keyframes mgPopGoal{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.5);}
+    30%{opacity:1;transform:translate(-50%,-50%) scale(1.2);}
+    100%{opacity:0;transform:translate(-50%,-85%) scale(1.05);}
+  }
+  @keyframes mgPopBoo{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.5);}
+    30%{opacity:1;transform:translate(-50%,-50%) scale(1.15);}
+    100%{opacity:0;transform:translate(-50%,-70%) scale(1);}
+  }
+  .confetti-piece{position:absolute;top:0;width:6px;height:10px;pointer-events:none;}
+  @keyframes confettiFall{
+    0%{transform:translate(0,0) rotate(0deg);opacity:1;}
+    100%{transform:translate(var(--dx), 260px) rotate(560deg);opacity:0;}
+  }
+  .mg-hint{text-align:center;color:var(--muted);font-size:12px;margin-top:12px;}
+
+  /* ===== Mobile responsive ===== */
+  @media (max-width: 720px){
+    body{padding:16px 10px 44px;}
+    .topbar{margin-bottom:4px;}
+    h1{font-size:17px;}
+    button{padding:8px 12px;font-size:13px;}
+    .hint{font-size:11.5px;margin:2px 0 14px;}
+
+    .board{flex-direction:column;gap:12px;}
+
+    .team-panel{
+      width:100%;
+      position:static;
+      top:auto;
+    }
+    body.draft-mode .team-panel{
+      order:-1;
+      margin-bottom:2px;
+    }
+
+    /* Kompaktes Grid statt horizontalem Scrollen */
+    .grid-cols{
+      grid-template-columns:14px 34px 1.6fr 0.9fr 0.65fr 1fr 18px;
+      gap:2px;
+    }
+    .col-header{padding:0 2px 6px;}
+    .col-header span{padding-left:6px;font-size:10px;}
+    .col-header span:first-child,
+    .col-header span:nth-child(2),
+    .col-header span:last-child{padding-left:0;}
+
+    .row{padding:2px;border-radius:8px;}
+    .row input, .row select{
+      font-size:14px;
+      padding:9px 5px;
+    }
+    .row input::placeholder{font-size:12.5px;}
+    .rank{font-size:10.5px;}
+    .handle{
+      font-size:19px;
+      touch-action:none; /* verhindert Scroll-Konflikt beim Ziehen */
+      background:var(--panel2);
+      border-radius:6px;
+    }
+    .del{
+      opacity:1; /* kein Hover am Touch-Gerät, deshalb immer sichtbar */
+      font-size:18px;
+      padding:6px;
+    }
+
+    .minigame{padding:10px 12px;margin-top:18px;}
+    .pitch{height:100px;}
+
+    .modal{padding:18px;border-radius:14px;}
+    .modal-actions{flex-direction:column;}
+    .modal-actions button{width:100%;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1>Sandro's Kickbase Draft Board</h1>
+    <div class="btns">
+      <button id="exportBtn">Export</button>
+      <button id="draftBtn">Draft</button>
+    </div>
+  </div>
+  <div class="hint" id="hint">Zeile kurz gedrückt halten und ziehen, um sie neu zu sortieren.</div>
+
+  <div class="board">
+    <div class="team-panel" id="teamPanel">
+      <h3>Mein Team</h3>
+      <ul id="teamList"></ul>
+      <div class="team-total">
+        <span class="label">Team MW</span>
+        <span class="value" id="teamTotal">0 Mio. €</span>
+      </div>
+    </div>
+
+    <div class="rows-panel">
+      <div class="col-header grid-cols">
+        <span>#</span>
+        <span></span>
+        <span>Spieler</span>
+        <span>MW</span>
+        <span>Pos</span>
+        <span>Verein</span>
+        <span></span>
+      </div>
+      <div id="rows"></div>
+    </div>
+  </div>
+
+  <div class="minigame">
+    <div class="minigame-header">
+      <div class="goal-counter">⚽ <span id="goalCount">0</span></div>
+    </div>
+    <div class="pitch-wrap">
+      <div class="pitch" id="pitch">
+        <div class="goal-frame"></div>
+        <div class="wall" id="wallLeft"></div>
+        <div class="wall" id="wall"></div>
+        <div class="ball" id="ball"></div>
+        <div class="mg-feedback" id="mgFeedback"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note"><a id="clearBtn">Board leeren</a></div>
+</div>
+
+<div class="modal-overlay" id="exportOverlay">
+  <div class="modal">
+    <h3>Spieler exportieren</h3>
+    <label class="modal-label">
+      Anzahl Spieler
+      <input type="number" id="exportCount" min="1" value="25">
+    </label>
+    <div class="modal-preview-wrap">
+      <textarea id="exportPreview" readonly rows="6"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button id="exportCopyBtn" class="primary">In Zwischenablage kopieren</button>
+      <button id="exportCloseBtn">Schließen</button>
+    </div>
+    <div class="modal-status" id="exportStatus"></div>
+  </div>
+</div>
+
+<script>
+  const rowsEl = document.getElementById('rows');
+  const draftBtn = document.getElementById('draftBtn');
+  const hint = document.getElementById('hint');
+  const teamList = document.getElementById('teamList');
+  const teamTotal = document.getElementById('teamTotal');
+  const clearBtn = document.getElementById('clearBtn');
+
+  const STORAGE_KEY = 'kickbase-draft-board-v2';
+
+  // ===== Sounds (synthetisch per Web Audio API, keine Dateien nötig) =====
+  let audioCtx = null;
+  function getAudioCtx(){
+    if(!audioCtx){
+      try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ audioCtx = null; }
+    }
+    if(audioCtx && audioCtx.state === 'suspended'){
+      try{ audioCtx.resume(); }catch(e){}
+    }
+    return audioCtx;
+  }
+  function playTone(freq, duration, type, volume, delay){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const t0 = ctx.currentTime + (delay || 0);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(volume || 0.2, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.03);
+  }
+  function playSnapSound(){
+    playTone(1100, 0.05, 'sine', 0.16);
+  }
+  function playGoalSound(){
+    playTone(523.25, 0.12, 'triangle', 0.22);
+    playTone(659.25, 0.12, 'triangle', 0.22, 0.09);
+    playTone(783.99, 0.2, 'triangle', 0.25, 0.18);
+  }
+  function playRedSound(){
+    playTone(320, 0.14, 'sawtooth', 0.14);
+    playTone(210, 0.18, 'sawtooth', 0.12, 0.06);
+  }
+  function playGreenSound(){
+    playTone(660, 0.09, 'sine', 0.2);
+    playTone(880, 0.16, 'sine', 0.22, 0.07);
+  }
+  let draftMode = false;
+  let draggedRow = null;
+
+  const CLUBS = [
+    {code:'FCB', name:'FC Bayern München', color:'#dc052d', color2:'#0066b2'},
+    {code:'BVB', name:'Borussia Dortmund', color:'#fde100', color2:'#3a3a3e'},
+    {code:'RBL', name:'RB Leipzig', color:'#ffffff', color2:'#dd0741'},
+    {code:'VFB', name:'VfB Stuttgart', color:'#ffffff', color2:'#e32219', pattern:'ring'},
+    {code:'TSG', name:'TSG Hoffenheim', color:'#1c63b7', color2:'#ffffff'},
+    {code:'B04', name:'Bayer Leverkusen', color:'#c8102e', color2:'#3a3a3e'},
+    {code:'SCF', name:'SC Freiburg', color:'#3a3a3e', color2:'#e2001a'},
+    {code:'SGE', name:'Eintracht Frankfurt', color:'#3a3a3e', color2:'#e1000f'},
+    {code:'FCA', name:'FC Augsburg', color:'#bb3f3f', color2:'#00693e'},
+    {code:'M05', name:'1. FSV Mainz 05', color:'#c3141e', color2:'#ffffff'},
+    {code:'FCU', name:'1. FC Union Berlin', color:'#eb1923', color2:'#ffcc00'},
+    {code:'BMG', name:'Borussia Mönchengladbach', color:'#3a3a3e', color2:'#00693e'},
+    {code:'HSV', name:'Hamburger SV', color:'#0c1c8c', color2:'#ffffff'},
+    {code:'KOE', name:'1. FC Köln', color:'#ed1c24', color2:'#ffffff'},
+    {code:'SVW', name:'SV Werder Bremen', color:'#009036', color2:'#ffffff'},
+    {code:'S04', name:'FC Schalke 04', color:'#004c9c', color2:'#ffffff'},
+    {code:'SVE', name:'SV Elversberg', color:'#005ca9', color2:'#ffffff'},
+    {code:'SCP', name:'SC Paderborn', color:'#00337a', color2:'#3a3a3e'},
+  ].sort((a,b)=>a.name.localeCompare(b.name,'de'));
+
+  const CLUBS_BY_CODE = Object.fromEntries(CLUBS.map(c=>[c.code,c]));
+
+  function hexToRgba(hex, alpha){
+    const h = hex.replace('#','');
+    const r = parseInt(h.substring(0,2),16);
+    const g = parseInt(h.substring(2,4),16);
+    const b = parseInt(h.substring(4,6),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  function parseMWMio(str){
+    const cleaned = String(str||'').trim().replace(/\./g,'').replace(',', '.');
+    const n = parseFloat(cleaned);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function formatMio(n){
+    return n.toLocaleString('de-DE', {maximumFractionDigits:2}) + ' Mio. €';
+  }
+
+  function isRowEmpty(row){
+    return ['.f-spieler','.f-mw','.f-pos','.f-verein']
+      .every(sel => row.querySelector(sel).value.trim() === '');
+  }
+
+  function applyStateClass(row){
+    row.classList.remove('state-red','state-green');
+    if(row.dataset.state === 'red') row.classList.add('state-red');
+    if(row.dataset.state === 'green') row.classList.add('state-green');
+  }
+
+  const POSITIONS = ['TW','ABW','MF','ST'];
+
+  function buildPositionOptions(selected){
+    let html = `<option value="">Pos</option>`;
+    POSITIONS.forEach(p=>{
+      html += `<option value="${p}"${p===selected?' selected':''}>${p}</option>`;
+    });
+    return html;
+  }
+
+  function isCompactView(){
+    return window.matchMedia('(max-width: 720px)').matches;
+  }
+
+  function buildVereinOptions(selectedCode, compact){
+    let html = `<option value="">${compact ? 'Verein' : 'Verein wählen'}</option>`;
+    CLUBS.forEach(c=>{
+      const label = compact ? c.code : c.name;
+      html += `<option value="${c.code}"${c.code===selectedCode?' selected':''}>${escapeHtml(label)}</option>`;
+    });
+    return html;
+  }
+
+  function applyClubStyle(select){
+    const club = CLUBS_BY_CODE[select.value];
+    if(club){
+      const c1 = hexToRgba(club.color, 0.32);
+      const c2 = hexToRgba(club.color2, 0.32);
+      if(club.pattern === 'ring'){
+        // VfB-Trikot: Grundfarbe oben/unten, dünner Brustring in der Mitte
+        const ring = hexToRgba(club.color2, 0.65);
+        select.style.background = `linear-gradient(180deg, ${c1} 0%, ${c1} 38%, ${ring} 38%, ${ring} 55%, ${c1} 55%, ${c1} 100%)`;
+      } else {
+        // Standard: zwei Vereinsfarben nebeneinander
+        select.style.background = `linear-gradient(90deg, ${c1} 0%, ${c1} 50%, ${c2} 50%, ${c2} 100%)`;
+      }
+      select.style.borderLeftColor = club.color;
+      select.style.boxShadow = '0 0 0 1px rgba(255,255,255,.45)';
+    } else {
+      select.style.background = '';
+      select.style.borderLeftColor = '';
+      select.style.boxShadow = '';
+    }
+  }
+
+  function startRowDrag(row, startX, startY){
+    draggedRow = row;
+    row.classList.add('dragging');
+
+    function moveTo(clientX, clientY){
+      const target = document.elementFromPoint(clientX, clientY);
+      const targetRow = target && target.closest && target.closest('.row');
+      if(!targetRow || targetRow === row || !rowsEl.contains(targetRow)) return;
+      const rect = targetRow.getBoundingClientRect();
+      const offset = clientY - rect.top;
+      if(offset > rect.height / 2){
+        targetRow.after(row);
+      } else {
+        targetRow.before(row);
+      }
+      renumberRows();
+    }
+
+    function finish(){
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchcancel', onTouchEnd);
+      row.classList.remove('dragging');
+      draggedRow = null;
+      ensureTrailingEmptyRow();
+      saveState();
+      playSnapSound();
+    }
+
+    function onMouseMove(ev){
+      moveTo(ev.clientX, ev.clientY);
+    }
+    function onMouseUp(){
+      finish();
+    }
+    function onTouchMove(ev){
+      ev.preventDefault(); // verhindert Scrollen/Text-Auswahl während des Ziehens
+      const t = ev.touches[0];
+      if(!t) return;
+      moveTo(t.clientX, t.clientY);
+    }
+    function onTouchEnd(){
+      finish();
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('touchmove', onTouchMove, {passive:false});
+    document.addEventListener('touchend', onTouchEnd);
+    document.addEventListener('touchcancel', onTouchEnd);
+  }
+
+  function renumberRows(){
+    [...rowsEl.children].forEach((r, i) => {
+      r.querySelector('.rank').textContent = i + 1;
+    });
+  }
+
+  function createRow(data){
+    data = data || {spieler:'',marktwert:'',position:'',verein:'',state:'none'};
+    const row = document.createElement('div');
+    row.className = 'row grid-cols';
+    row.dataset.state = data.state || 'none';
+
+    row.innerHTML = `
+      <span class="rank">1</span>
+      <span class="handle">⋮⋮</span>
+      <input class="f-spieler" type="text" placeholder="Spielername" value="${escapeHtml(data.spieler)}">
+      <input class="f-mw" type="text" placeholder="z.B. 50,3" value="${escapeHtml(data.marktwert)}">
+      <select class="f-pos">${buildPositionOptions(data.position)}</select>
+      <select class="f-verein">${buildVereinOptions(data.verein, isCompactView())}</select>
+      <button class="del" title="Zeile löschen">×</button>
+    `;
+    applyStateClass(row);
+
+    row.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        ensureTrailingEmptyRow();
+        saveState();
+      });
+    });
+
+    const vereinSelect = row.querySelector('.f-verein');
+    applyClubStyle(vereinSelect);
+    vereinSelect.addEventListener('change', ()=>{
+      applyClubStyle(vereinSelect);
+      ensureTrailingEmptyRow();
+      saveState();
+    });
+
+    row.querySelector('.f-pos').addEventListener('change', ()=>{
+      ensureTrailingEmptyRow();
+      saveState();
+    });
+
+    row.querySelector('.del').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      row.remove();
+      ensureTrailingEmptyRow();
+      updateTeamPanel();
+      saveState();
+    });
+
+    const handle = row.querySelector('.handle');
+    handle.addEventListener('contextmenu', (e)=> e.preventDefault());
+    handle.addEventListener('mousedown', (e)=>{
+      if(draftMode) return;
+      e.preventDefault();
+      startRowDrag(row, e.clientX, e.clientY);
+    });
+    handle.addEventListener('touchstart', (e)=>{
+      if(draftMode) return;
+      e.preventDefault(); // verhindert Text-Auswahl / Scrollen beim Starten
+      const t = e.touches[0];
+      if(!t) return;
+      startRowDrag(row, t.clientX, t.clientY);
+    }, {passive:false});
+
+    // Ganze Zeile gedrückt halten = verschieben (kurzes Antippen bleibt normale
+    // Bedienung von Textfeldern/Dropdowns). Löschen-Button ist ausgenommen.
+    const LONG_PRESS_MS = 300;
+    const MOVE_CANCEL_PX = 12;
+    let pressTimer = null;
+    let pressStartX = 0, pressStartY = 0;
+    let longPressActive = false;
+
+    function clearPressTimer(){
+      if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
+    }
+
+    row.addEventListener('touchstart', (e)=>{
+      if(draftMode) return;
+      if(e.target.closest('.handle,.del,.f-mw,select')) return; // die haben ihre eigene Logik
+      const t = e.touches[0];
+      if(!t) return;
+      pressStartX = t.clientX; pressStartY = t.clientY;
+      longPressActive = false;
+      clearPressTimer();
+      pressTimer = setTimeout(()=>{
+        pressTimer = null;
+        longPressActive = true;
+        if(document.activeElement && document.activeElement !== document.body){
+          try{ document.activeElement.blur(); }catch(err){}
+        }
+        if(navigator.vibrate){ try{ navigator.vibrate(15); }catch(err){} }
+        startRowDrag(row, pressStartX, pressStartY);
+      }, LONG_PRESS_MS);
+    }, {passive:true});
+
+    row.addEventListener('touchmove', (e)=>{
+      if(!pressTimer) return;
+      const t = e.touches[0];
+      if(!t) return;
+      if(Math.abs(t.clientX - pressStartX) > MOVE_CANCEL_PX || Math.abs(t.clientY - pressStartY) > MOVE_CANCEL_PX){
+        clearPressTimer(); // Nutzer scrollt vermutlich, kein Drag
+      }
+    }, {passive:true});
+
+    row.addEventListener('touchend', (e)=>{
+      clearPressTimer();
+      if(longPressActive){
+        e.preventDefault(); // verhindert, dass danach ungewollt ein Feld fokussiert wird
+        longPressActive = false;
+      }
+    });
+    row.addEventListener('touchcancel', ()=>{
+      clearPressTimer();
+      longPressActive = false;
+    });
+
+    // Maus: gedrückt halten auf der Zeile (außerhalb von Eingabefeldern) startet ebenfalls
+    row.addEventListener('mousedown', (e)=>{
+      if(draftMode) return;
+      if(e.target.closest('.handle,.del,input,select')) return;
+      pressStartX = e.clientX; pressStartY = e.clientY;
+      clearPressTimer();
+      pressTimer = setTimeout(()=>{
+        pressTimer = null;
+        if(document.activeElement && document.activeElement !== document.body){
+          try{ document.activeElement.blur(); }catch(err){}
+        }
+        startRowDrag(row, pressStartX, pressStartY);
+      }, LONG_PRESS_MS);
+      const cancelOnUp = ()=>{
+        clearPressTimer();
+        document.removeEventListener('mouseup', cancelOnUp);
+      };
+      document.addEventListener('mouseup', cancelOnUp);
+    });
+
+    row.addEventListener('click', ()=>{
+      if(!draftMode) return;
+      if(isRowEmpty(row)) return;
+      if(row.dataset.state === 'green') return;
+      row.dataset.state = row.dataset.state === 'red' ? 'none' : 'red';
+      applyStateClass(row);
+      if(row.dataset.state === 'red') playRedSound();
+      saveState();
+    });
+
+    row.addEventListener('dblclick', ()=>{
+      if(!draftMode) return;
+      if(isRowEmpty(row)) return;
+      row.dataset.state = row.dataset.state === 'green' ? 'none' : 'green';
+      applyStateClass(row);
+      if(row.dataset.state === 'green') playGreenSound();
+      updateTeamPanel();
+      saveState();
+    });
+
+    return row;
+  }
+
+  function escapeHtml(s){
+    return String(s || '').replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  function ensureTrailingEmptyRow(){
+    const rows = [...rowsEl.children];
+    if(rows.length === 0){
+      rowsEl.appendChild(createRow());
+      renumberRows();
+      return;
+    }
+    let i = rows.length - 1;
+    let emptyCount = 0;
+    while(i >= 0 && isRowEmpty(rows[i])){ emptyCount++; i--; }
+    for(let k = 0; k < emptyCount - 1; k++){
+      rowsEl.removeChild(rowsEl.lastChild);
+    }
+    if(emptyCount === 0){
+      rowsEl.appendChild(createRow());
+    }
+    renumberRows();
+  }
+
+  function updateTeamPanel(){
+    const greens = [...rowsEl.children].filter(r => r.dataset.state === 'green');
+    teamList.innerHTML = '';
+    if(greens.length === 0){
+      teamList.innerHTML = '<div class="team-empty">Noch keine Spieler gedraftet.</div>';
+    } else {
+      greens.forEach(r=>{
+        const name = r.querySelector('.f-spieler').value.trim() || '—';
+        const mw = parseMWMio(r.querySelector('.f-mw').value);
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${escapeHtml(name)}</span><span class="mw">${mw ? formatMio(mw) : ''}</span>`;
+        teamList.appendChild(li);
+      });
+    }
+    const total = greens.reduce((sum, r) => sum + parseMWMio(r.querySelector('.f-mw').value), 0);
+    teamTotal.textContent = formatMio(total);
+  }
+
+  function collectState(){
+    const rows = [...rowsEl.children].map(r => ({
+      spieler: r.querySelector('.f-spieler').value,
+      marktwert: r.querySelector('.f-mw').value,
+      position: r.querySelector('.f-pos').value,
+      verein: r.querySelector('.f-verein').value,
+      state: r.dataset.state
+    }));
+    return { rows, draftMode };
+  }
+
+  function saveState(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(collectState()));
+    }catch(e){}
+  }
+
+  function setDraftMode(on){
+    draftMode = on;
+    document.body.classList.toggle('draft-mode', draftMode);
+    draftBtn.textContent = draftMode ? 'Zurück zum Ranking' : 'Draft';
+    draftBtn.classList.toggle('active', draftMode);
+    hint.textContent = draftMode
+      ? 'Klick = Spieler raus · Doppelklick = selbst gedraftet · nochmal klicken zum Rückgängigmachen.'
+      : 'Zeile kurz gedrückt halten und ziehen, um sie neu zu sortieren.';
+    if(draftMode) updateTeamPanel();
+  }
+
+  draftBtn.addEventListener('click', ()=>{
+    setDraftMode(!draftMode);
+    saveState();
+  });
+
+  let lastCompact = isCompactView();
+  function refreshVereinLabelsIfNeeded(){
+    const compact = isCompactView();
+    if(compact === lastCompact) return;
+    lastCompact = compact;
+    [...rowsEl.children].forEach(row=>{
+      const sel = row.querySelector('.f-verein');
+      const current = sel.value;
+      sel.innerHTML = buildVereinOptions(current, compact);
+      applyClubStyle(sel);
+    });
+  }
+  let vereinResizeTimer;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(vereinResizeTimer);
+    vereinResizeTimer = setTimeout(refreshVereinLabelsIfNeeded, 150);
+  });
+
+  clearBtn.addEventListener('click', ()=>{
+    if(!confirm('Board wirklich komplett leeren?')) return;
+    rowsEl.innerHTML = '';
+    ensureTrailingEmptyRow();
+    updateTeamPanel();
+    saveState();
+  });
+
+  // ===== Export =====
+  const exportBtn = document.getElementById('exportBtn');
+  const exportOverlay = document.getElementById('exportOverlay');
+  const exportCount = document.getElementById('exportCount');
+  const exportPreview = document.getElementById('exportPreview');
+  const exportCopyBtn = document.getElementById('exportCopyBtn');
+  const exportCloseBtn = document.getElementById('exportCloseBtn');
+  const exportStatus = document.getElementById('exportStatus');
+
+  function getFilledRows(){
+    return [...rowsEl.children].filter(r => !isRowEmpty(r));
+  }
+
+  function buildExportText(limit){
+    const rows = getFilledRows().slice(0, limit);
+    return rows.map(r => {
+      const name = r.querySelector('.f-spieler').value.trim() || '—';
+      const mw = r.querySelector('.f-mw').value.trim();
+      return mw ? `${name} ${mw}` : name;
+    }).join('\n');
+  }
+
+  function refreshExportPreview(){
+    const total = getFilledRows().length;
+    let n = parseInt(exportCount.value, 10);
+    if(isNaN(n) || n < 1) n = 1;
+    if(n > total) n = total;
+    exportPreview.value = total === 0
+      ? 'Keine Spieler zum Exportieren vorhanden.'
+      : buildExportText(n);
+    exportStatus.textContent = '';
+  }
+
+  exportBtn.addEventListener('click', ()=>{
+    const total = getFilledRows().length;
+    exportCount.max = Math.max(total, 1);
+    exportCount.value = Math.min(25, Math.max(total, 1));
+    refreshExportPreview();
+    exportOverlay.classList.add('show');
+  });
+
+  exportCount.addEventListener('input', refreshExportPreview);
+
+  exportCopyBtn.addEventListener('click', async ()=>{
+    const text = exportPreview.value;
+    try{
+      await navigator.clipboard.writeText(text);
+      exportStatus.textContent = 'In Zwischenablage kopiert ✓';
+    }catch(err){
+      // Fallback für Browser ohne Clipboard-API-Berechtigung
+      exportPreview.select();
+      try{
+        document.execCommand('copy');
+        exportStatus.textContent = 'In Zwischenablage kopiert ✓';
+      }catch(err2){
+        exportStatus.textContent = 'Kopieren fehlgeschlagen – bitte manuell markieren.';
+      }
+    }
+  });
+
+  function closeExportModal(){
+    exportOverlay.classList.remove('show');
+  }
+  exportCloseBtn.addEventListener('click', closeExportModal);
+  exportOverlay.addEventListener('click', (e)=>{
+    if(e.target === exportOverlay) closeExportModal();
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && exportOverlay.classList.contains('show')) closeExportModal();
+  });
+
+  // Top-100 Standardliste (nach Marktwert sortiert)
+  const DEFAULT_PLAYERS = [
+    {spieler:'Harry Kane', marktwert:'67,9', position:'ST', verein:'FCB'},
+    {spieler:'Michael Olise', marktwert:'63,7', position:'MF', verein:'FCB'},
+    {spieler:'Joshua Kimmich', marktwert:'59,0', position:'MF', verein:'FCB'},
+    {spieler:'Luis Díaz', marktwert:'52,4', position:'ST', verein:'FCB'},
+    {spieler:'Deniz Undav', marktwert:'42,1', position:'ST', verein:'VFB'},
+    {spieler:'Yan Diomande', marktwert:'38,1', position:'ST', verein:'RBL'},
+    {spieler:'Aleix García', marktwert:'35,6', position:'MF', verein:'B04'},
+    {spieler:'Angelo Stiller', marktwert:'35,6', position:'MF', verein:'VFB'},
+    {spieler:'Jonathan Tah', marktwert:'35,3', position:'ABW', verein:'FCB'},
+    {spieler:'Nico Schlotterbeck', marktwert:'35,3', position:'ABW', verein:'BVB'},
+    {spieler:'Jamal Musiala', marktwert:'33,5', position:'MF', verein:'FCB'},
+    {spieler:'Konrad Laimer', marktwert:'33,0', position:'ABW', verein:'FCB'},
+    {spieler:'Waldemar Anton', marktwert:'32,1', position:'ABW', verein:'BVB'},
+    {spieler:'Dayotchanculle Upamecano', marktwert:'31,8', position:'ABW', verein:'FCB'},
+    {spieler:'David Raum', marktwert:'31,1', position:'ABW', verein:'RBL'},
+    {spieler:'Nadiem Amiri', marktwert:'30,7', position:'MF', verein:'M05'},
+    {spieler:'Edmond Tapsoba', marktwert:'30,6', position:'ABW', verein:'B04'},
+    {spieler:'Aleksandar Pavlović', marktwert:'29,6', position:'MF', verein:'FCB'},
+    {spieler:'Willi Orban', marktwert:'29,5', position:'ABW', verein:'RBL'},
+    {spieler:'Josip Stanišić', marktwert:'28,7', position:'ABW', verein:'FCB'},
+    {spieler:'Patrik Schick', marktwert:'28,0', position:'ST', verein:'B04'},
+    {spieler:'Ismael Saibari', marktwert:'28,0', position:'ST', verein:'FCB'},
+    {spieler:'Maximilian Mittelstädt', marktwert:'27,8', position:'ABW', verein:'VFB'},
+    {spieler:'Ibrahim Maza', marktwert:'27,5', position:'MF', verein:'B04'},
+    {spieler:'Nathaniel Brown', marktwert:'27,0', position:'ABW', verein:'FCB'},
+    {spieler:'Serhou Guirassy', marktwert:'26,4', position:'ST', verein:'BVB'},
+    {spieler:'Jamie Leweling', marktwert:'25,9', position:'MF', verein:'VFB'},
+    {spieler:'Can Uzun', marktwert:'25,7', position:'MF', verein:'SGE'},
+    {spieler:'Lennart Karl', marktwert:'25,5', position:'MF', verein:'FCB'},
+    {spieler:'Fisnik Asllani', marktwert:'25,5', position:'ST', verein:'TSG'},
+    {spieler:'Matthias Ginter', marktwert:'25,2', position:'ABW', verein:'SCF'},
+    {spieler:'Jeff Chabot', marktwert:'25,0', position:'ABW', verein:'VFB'},
+    {spieler:'Julian Ryerson', marktwert:'24,7', position:'ABW', verein:'BVB'},
+    {spieler:'Ermedin Demirović', marktwert:'24,7', position:'ST', verein:'VFB'},
+    {spieler:'Andrej Kramarić', marktwert:'24,6', position:'MF', verein:'TSG'},
+    {spieler:'Bilal El Khannouss', marktwert:'24,3', position:'MF', verein:'VFB'},
+    {spieler:'Maximilian Beier', marktwert:'24,0', position:'ST', verein:'BVB'},
+    {spieler:'Jonathan Burkardt', marktwert:'22,9', position:'ST', verein:'SGE'},
+    {spieler:'Said El Mala', marktwert:'22,9', position:'MF', verein:'KOE'},
+    {spieler:'Vladimír Coufal', marktwert:'22,3', position:'ABW', verein:'TSG'},
+    {spieler:'Chris Führich', marktwert:'22,3', position:'MF', verein:'VFB'},
+    {spieler:'Antonio Nusa', marktwert:'21,8', position:'MF', verein:'RBL'},
+    {spieler:'Gregor Kobel', marktwert:'21,7', position:'TW', verein:'BVB'},
+    {spieler:'Felix Nmecha', marktwert:'21,5', position:'MF', verein:'BVB'},
+    {spieler:'Robin Koch', marktwert:'20,4', position:'ABW', verein:'SGE'},
+    {spieler:'Lukeba Castello Jr.', marktwert:'19,9', position:'ABW', verein:'RBL'},
+    {spieler:'Assan Ouédraogo', marktwert:'19,9', position:'MF', verein:'RBL'},
+    {spieler:'Exequiel Palacios', marktwert:'19,7', position:'MF', verein:'B04'},
+    {spieler:'Christoph Baumgartner', marktwert:'19,4', position:'MF', verein:'RBL'},
+    {spieler:'Joane Gadou', marktwert:'19,4', position:'ABW', verein:'BVB'},
+    {spieler:'Tom Bischof', marktwert:'19,1', position:'MF', verein:'FCB'},
+    {spieler:'Wouter Burger', marktwert:'19,1', position:'MF', verein:'TSG'},
+    {spieler:'Oliver Baumann', marktwert:'19,0', position:'TW', verein:'TSG'},
+    {spieler:'Jarell Quansah', marktwert:'18,6', position:'ABW', verein:'B04'},
+    {spieler:'Daniel Svensson', marktwert:'18,5', position:'ABW', verein:'BVB'},
+    {spieler:'Serge Gnabry', marktwert:'17,5', position:'MF', verein:'FCB'},
+    {spieler:'Ozan Kabak', marktwert:'17,4', position:'ABW', verein:'TSG'},
+    {spieler:'Ridle Baku', marktwert:'17,4', position:'ABW', verein:'RBL'},
+    {spieler:'Afonso Moreira', marktwert:'17,3', position:'ST', verein:'B04'},
+    {spieler:'Ritsu Dōan', marktwert:'17,1', position:'MF', verein:'SGE'},
+    {spieler:'Rômulo', marktwert:'16,9', position:'ST', verein:'RBL'},
+    {spieler:'Jobe Bellingham', marktwert:'16,8', position:'MF', verein:'BVB'},
+    {spieler:'Moritz Nicolas', marktwert:'16,7', position:'TW', verein:'BMG'},
+    {spieler:'Ramy Bensebaini', marktwert:'16,7', position:'ABW', verein:'BVB'},
+    {spieler:'Nico Elvedi', marktwert:'16,4', position:'ABW', verein:'BMG'},
+    {spieler:'Jens Stage', marktwert:'15,7', position:'MF', verein:'SVW'},
+    {spieler:'Malik Tillman', marktwert:'15,4', position:'MF', verein:'B04'},
+    {spieler:'Maxime Estève', marktwert:'15,1', position:'ABW', verein:'RBL'},
+    {spieler:'Alphonso Davies', marktwert:'14,7', position:'ABW', verein:'FCB'},
+    {spieler:'Romano Schmid', marktwert:'14,4', position:'MF', verein:'SVW'},
+    {spieler:'Igor Matanović', marktwert:'14,2', position:'ST', verein:'SCF'},
+    {spieler:'Mio Backhaus', marktwert:'13,9', position:'TW', verein:'SVW'},
+    {spieler:'Albian Hajdari', marktwert:'13,7', position:'ABW', verein:'TSG'},
+    {spieler:'Finn Dahmen', marktwert:'13,6', position:'TW', verein:'FCA'},
+    {spieler:'Arthur Theate', marktwert:'13,1', position:'ABW', verein:'SGE'},
+    {spieler:'Tim Kleindienst', marktwert:'12,9', position:'ST', verein:'BMG'},
+    {spieler:'Loïc Badé', marktwert:'12,7', position:'ABW', verein:'B04'},
+    {spieler:'Nicolas Seiwald', marktwert:'12,7', position:'MF', verein:'RBL'},
+    {spieler:'Kenan Karaman', marktwert:'12,4', position:'ST', verein:'S04'},
+    {spieler:'Loris Karius', marktwert:'12,4', position:'TW', verein:'S04'},
+    {spieler:'Kevin Diks', marktwert:'12,0', position:'ABW', verein:'BMG'},
+    {spieler:'Dennis Seimen', marktwert:'11,9', position:'TW', verein:'VFB'},
+    {spieler:'Kaishu Sano', marktwert:'11,9', position:'MF', verein:'M05'},
+    {spieler:'Brajan Gruda', marktwert:'11,9', position:'MF', verein:'B04'},
+    {spieler:'Jonas Urbig', marktwert:'11,9', position:'TW', verein:'FCB'},
+    {spieler:'Farès Chaïbi', marktwert:'11,8', position:'MF', verein:'SGE'},
+    {spieler:'Noah Atubolu', marktwert:'11,8', position:'TW', verein:'BMG'},
+    {spieler:'Manuel Neuer', marktwert:'11,6', position:'TW', verein:'FCB'},
+    {spieler:'Maarten Vandevoordt', marktwert:'11,6', position:'TW', verein:'RBL'},
+    {spieler:'Mark Flekken', marktwert:'11,6', position:'TW', verein:'B04'},
+    {spieler:'Leopold Querfeld', marktwert:'11,6', position:'ABW', verein:'FCU'},
+    {spieler:'Leon Avdullahu', marktwert:'11,4', position:'MF', verein:'TSG'},
+    {spieler:'Maximilian Eggestein', marktwert:'11,4', position:'MF', verein:'BMG'},
+    {spieler:'Samuele Inácio', marktwert:'11,3', position:'MF', verein:'BVB'},
+    {spieler:'Tim Lemperle', marktwert:'11,2', position:'ST', verein:'TSG'},
+    {spieler:'Nathan De Cat', marktwert:'11,2', position:'MF', verein:'BMG'},
+    {spieler:'Nikola Katić', marktwert:'11,2', position:'ABW', verein:'S04'},
+    {spieler:'Rocco Reitz', marktwert:'11,2', position:'MF', verein:'RBL'},
+    {spieler:'Enzo Leopold', marktwert:'11,2', position:'MF', verein:'BMG'},
+    {spieler:'Keven Schlotterbeck', marktwert:'11,1', position:'ABW', verein:'FCA'},
+  ];
+
+  // Init
+  (function init(){
+    let saved = null;
+    try{ saved = JSON.parse(localStorage.getItem(STORAGE_KEY)); }catch(e){}
+
+    if(saved && Array.isArray(saved.rows) && saved.rows.length){
+      saved.rows.forEach(data => rowsEl.appendChild(createRow(data)));
+    } else {
+      DEFAULT_PLAYERS.forEach(data => rowsEl.appendChild(createRow(data)));
+    }
+    ensureTrailingEmptyRow();
+    setDraftMode(!!(saved && saved.draftMode));
+  })();
+</script>
+
+<script>
+(function(){
+  const pitch = document.getElementById('pitch');
+  const ball = document.getElementById('ball');
+  const feedback = document.getElementById('mgFeedback');
+  const goalCountEl = document.getElementById('goalCount');
+
+  const GOAL_KEY = 'kickbase-goal-count';
+  let goalCount = parseInt(localStorage.getItem(GOAL_KEY) || '0', 10) || 0;
+  goalCountEl.textContent = goalCount;
+
+  const BALL_R = 10;
+  const CENTER_X_FRAC = 0.58; // Position der bestehenden Mauer
+  const GOAL_X_FRAC = 1.0;    // Torlinie
+  const OFFSET = (GOAL_X_FRAC - CENTER_X_FRAC) / 2; // halbe Distanz zum Tor
+
+  // Zwei Mauern: eine links, eine in der Mitte, jede mit eigener
+  // Geschwindigkeit und Start-Phase, damit sie versetzt laufen.
+  const WALL_DEFS = [
+    { el: document.getElementById('wallLeft'),  xFrac: CENTER_X_FRAC - OFFSET, speed: 85, phase: 0.85, dir: -1 },
+    { el: document.getElementById('wall'),      xFrac: CENTER_X_FRAC,          speed: 70, phase: 0.15, dir:  1 },
+  ];
+
+  let pitchW = 0, pitchH = 0;
+  let ballX = 0, ballY = 0, velX = 0, velY = 0;
+  let flying = false;
+  let dragging = false, dragOriginX = 0, dragOriginY = 0, aimX = 0, aimY = 0;
+  let lastTs = null;
+
+  function measure(){
+    pitchW = pitch.clientWidth;
+    pitchH = pitch.clientHeight;
+    const wallW = Math.max(12, pitchW * 0.025);
+    const wallH = pitchH * 0.30;
+
+    WALL_DEFS.forEach(w => {
+      w.w = wallW;
+      w.h = wallH;
+      w.left = pitchW * w.xFrac;
+      w.right = w.left + wallW;
+      w.minTop = 0;
+      w.maxTop = pitchH - wallH;
+      if(w.top === undefined){
+        w.top = w.minTop + w.phase * (w.maxTop - w.minTop);
+      } else {
+        w.top = Math.min(Math.max(w.top, w.minTop), w.maxTop);
+      }
+      w.el.style.width = wallW + 'px';
+      w.el.style.height = wallH + 'px';
+      w.el.style.left = w.left + 'px';
+      w.el.style.top = w.top + 'px';
+    });
+  }
+
+  function resetBall(){
+    ballX = 22;
+    ballY = pitchH / 2;
+    velX = 0; velY = 0;
+    flying = false;
+    updateBallEl();
+  }
+
+  function updateBallEl(){
+    ball.style.left = (ballX - BALL_R) + 'px';
+    ball.style.top = (ballY - BALL_R) + 'px';
+  }
+
+  function showFeedback(text, type){
+    feedback.textContent = text;
+    feedback.className = 'mg-feedback';
+    void feedback.offsetWidth;
+    feedback.classList.add('show-' + type);
+  }
+
+  function spawnConfetti(){
+    const colors = ['#22c55e','#8b6bff','#22d3ee','#fde100','#ef4444','#ffffff'];
+    for(let i = 0; i < 26; i++){
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.left = (Math.random() * 100) + '%';
+      piece.style.top = (10 + Math.random() * 15) + '%';
+      const dx = (Math.random() - 0.5) * 170;
+      const dur = 700 + Math.random() * 500;
+      piece.style.setProperty('--dx', dx + 'px');
+      piece.style.animation = `confettiFall ${dur}ms ease-out forwards`;
+      pitch.appendChild(piece);
+      setTimeout(() => piece.remove(), dur + 60);
+    }
+  }
+
+  function handleGoal(){
+    flying = false;
+    goalCount++;
+    localStorage.setItem(GOAL_KEY, goalCount);
+    goalCountEl.textContent = goalCount;
+    playGoalSound();
+    showFeedback('TOR!', 'goal');
+    spawnConfetti();
+    setTimeout(resetBall, 900);
+  }
+
+  function handleFail(text){
+    flying = false;
+    showFeedback(text, 'boo');
+    setTimeout(resetBall, 650);
+  }
+
+  function checkState(){
+    // Rahmen oben/unten: abprallen wie beim Billard
+    if(ballY - BALL_R <= 0){
+      ballY = BALL_R;
+      velY = -velY;
+    } else if(ballY + BALL_R >= pitchH){
+      ballY = pitchH - BALL_R;
+      velY = -velY;
+    }
+    // Rahmen links: abprallen
+    if(ballX - BALL_R <= 0){
+      ballX = BALL_R;
+      velX = -velX;
+    }
+
+    // Torlinie rechts
+    if(ballX + BALL_R >= pitchW - 14){
+      const goalTop = pitchH * 0.08;
+      const goalBottom = pitchH * 0.92;
+      if(ballY > goalTop && ballY < goalBottom){
+        handleGoal();
+        return;
+      } else {
+        // Pfosten: abprallen
+        ballX = pitchW - 14 - BALL_R;
+        velX = -velX;
+      }
+    }
+
+    // Kollision mit einer der Mauern
+    for(const w of WALL_DEFS){
+      const withinX = ballX + BALL_R > w.left && ballX - BALL_R < w.right;
+      const withinY = ballY + BALL_R > w.top && ballY - BALL_R < w.top + w.h;
+      if(withinX && withinY){
+        handleFail('BOOO!');
+        return;
+      }
+    }
+  }
+
+  function loop(ts){
+    if(lastTs == null) lastTs = ts;
+    const dt = Math.min((ts - lastTs) / 1000, 0.05);
+    lastTs = ts;
+
+    WALL_DEFS.forEach(w => {
+      w.top += w.dir * w.speed * dt;
+      if(w.top <= w.minTop){ w.top = w.minTop; w.dir = 1; }
+      if(w.top >= w.maxTop){ w.top = w.maxTop; w.dir = -1; }
+      w.el.style.top = w.top + 'px';
+    });
+
+    if(flying){
+      ballX += velX * dt;
+      ballY += velY * dt;
+      checkState();
+      updateBallEl();
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  function pointInPitch(e){
+    const rect = pitch.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  function onDown(e){
+    if(flying) return;
+    const p = pointInPitch(e);
+    if(Math.hypot(p.x - ballX, p.y - ballY) > BALL_R + 16) return; // nur der Ball selbst ist greifbar
+    dragging = true;
+    dragOriginX = ballX; // Ball bleibt fix am Start, nur zum Zielen benutzt
+    dragOriginY = ballY;
+    aimX = p.x;
+    aimY = p.y;
+    if(pitch.setPointerCapture) { try{ pitch.setPointerCapture(e.pointerId); }catch(err){} }
+  }
+  function onMove(e){
+    if(!dragging) return;
+    const p = pointInPitch(e);
+    aimX = p.x;
+    aimY = p.y;
+    // Kleiner "Zurückziehen"-Effekt zum Zielen (wie beim Katapult), Ball bleibt aber
+    // in der Nähe des Startpunkts statt frei über das Feld geführt zu werden.
+    const dx = aimX - dragOriginX;
+    const dy = aimY - dragOriginY;
+    const dist = Math.hypot(dx, dy);
+    const MAX_PULL = 22;
+    const pull = Math.min(dist, MAX_PULL);
+    if(dist > 0){
+      ballX = dragOriginX - (dx / dist) * pull;
+      ballY = dragOriginY - (dy / dist) * pull;
+    } else {
+      ballX = dragOriginX;
+      ballY = dragOriginY;
+    }
+    updateBallEl();
+  }
+  function onUp(){
+    if(!dragging) return;
+    dragging = false;
+    const dx = aimX - dragOriginX;
+    const dy = aimY - dragOriginY;
+    const dist = Math.hypot(dx, dy);
+    // Schuss erfolgt immer exakt vom Startpunkt aus
+    ballX = dragOriginX;
+    ballY = dragOriginY;
+    if(dist < 10){
+      updateBallEl();
+      return;
+    }
+    const power = Math.min(Math.max(dist * 3.6, 240), 760);
+    velX = (dx / dist) * power;
+    velY = (dy / dist) * power;
+    flying = true;
+    updateBallEl();
+  }
+
+  pitch.addEventListener('pointerdown', onDown);
+  pitch.addEventListener('pointermove', onMove);
+  pitch.addEventListener('pointerup', onUp);
+  pitch.addEventListener('pointercancel', () => { dragging = false; });
+
+  window.addEventListener('resize', () => {
+    const wasFlying = flying;
+    measure();
+    if(!wasFlying) resetBall();
+  });
+
+  measure();
+  resetBall();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
